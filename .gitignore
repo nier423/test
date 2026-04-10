@@ -1,0 +1,4 @@
+~$*.docx
+Thumbs.db
+.playwright-cli/
+output/playwright/

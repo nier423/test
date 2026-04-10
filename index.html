@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>女性力量人格图鉴</title>
+    <meta
+      name="description"
+      content="25 道生活场景题，帮你找到专属于你的女性力量类型。"
+    >
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2310211d'/%3E%3Ccircle cx='24' cy='24' r='10' fill='%23d7a95d' fill-opacity='.92'/%3E%3Ccircle cx='40' cy='30' r='12' fill='%236cae98' fill-opacity='.85'/%3E%3Cpath d='M17 45c5-8 12-12 20-12 6 0 11 2 15 5' stroke='%23fff8ee' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3C/svg%3E"
+    >
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="page-glow page-glow--one"></div>
+    <div class="page-glow page-glow--two"></div>
+
+    <main class="app-shell">
+      <section class="screen screen--hero" id="hero-screen">
+        <div class="hero-card card animate-fade-up">
+          <p class="eyebrow animate-fade-up delay-1">女性力量人格图鉴</p>
+          <h1 class="hero-title animate-fade-up delay-2">找到蕴藏在你身体里的女性力量</h1>
+          <p class="hero-copy animate-fade-up delay-3">
+            在这些日常的场景选择里，我们一同看见你藏在细节里的独特气质，解锁专属于你的女性内核力量。请跟随本心，做出最贴合你真实想法的选择。
+          </p>
+
+          <div class="hero-metrics animate-fade-up delay-4">
+            <div class="metric">
+              <span class="metric__value">25</span>
+              <span class="metric__label">题目数</span>
+            </div>
+            <div class="metric">
+              <span class="metric__value">4</span>
+              <span class="metric__label">核心维度</span>
+            </div>
+            <div class="metric">
+              <span class="metric__value">3</span>
+              <span class="metric__label">预计时间</span>
+            </div>
+          </div>
+
+          <div class="hero-actions animate-fade-up delay-5">
+            <button class="button button--primary" id="start-button" type="button">开始测试</button>
+            <button class="button button--secondary hidden" id="resume-button" type="button">继续上次进度（3/25）</button>
+            <button class="button button--ghost hidden" id="clear-button" type="button">清空本地记录</button>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="screen hidden" id="quiz-screen">
+        <header class="quiz-topbar">
+          <button class="button button--ghost button--small" id="home-button" type="button">返回首页</button>
+          <div class="progress-panel card">
+            <div class="progress-panel__head">
+              <span class="progress-panel__label" id="progress-label">01 / 25</span>
+              <span class="progress-panel__meta">请选择最贴近你真实想法的一项</span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-track__fill" id="progress-fill"></div>
+            </div>
+          </div>
+        </header>
+
+        <article class="question-card card">
+          <div class="question-card__header">
+            <p class="eyebrow" id="question-number">Question 01</p>
+            <h2 class="question-title" id="question-title"></h2>
+          </div>
+
+          <div class="options" id="options"></div>
+
+          <footer class="question-footer">
+            <button class="button button--secondary" id="prev-button" type="button">上一题</button>
+            <p class="question-tip">选中后会自动进入下一题，可返回重选</p>
+          </footer>
+        </article>
+      </section>
+
+      <section class="screen hidden" id="result-screen">
+        <header class="result-topbar">
+          <div>
+            <p class="eyebrow">你的专属女性力量类型</p>
+            <h2 class="result-title" id="result-title"></h2>
+            <p class="result-code" id="result-code"></p>
+          </div>
+          <div class="result-actions">
+          </div>
+        </header>
+
+        <section class="result-hero card" id="result-hero">
+          <div class="result-hero__copy">
+            <p class="result-hero__type" id="result-archetype"></p>
+            <h3 class="result-hero__headline" id="result-headline"></h3>
+            <p class="result-hero__summary" id="result-summary"></p>
+            <div class="result-pills" id="result-pills"></div>
+          </div>
+        </section>
+
+        <section class="result-grid">
+          <article class="content-card card">
+            <h3>你的核心女性力量</h3>
+            <div class="scoreboard" id="scoreboard"></div>
+            <div class="copy-stack" id="result-core-copy"></div>
+          </article>
+
+          <article class="content-card card">
+            <h3>你的专属气质闪光点</h3>
+            <ul class="tag-list" id="highlight-list"></ul>
+          </article>
+
+
+          <article class="content-card card">
+            <h3>同频伙伴 &amp; 磨合提示</h3>
+            <div class="companion-grid" id="companion-grid"></div>
+          </article>
+
+          <article class="content-card card">
+            <h3>成长温柔提示</h3>
+            <p class="long-copy" id="growth-tip"></p>
+          </article>
+
+          <article class="content-card card content-card--accent">
+            <h3>专属力量寄语</h3>
+            <blockquote class="power-quote" id="power-quote"></blockquote>
+            <p class="hashtags">#女性力量人格图鉴 #你的专属女性力量类型</p>
+          </article>
+        </section>
+
+        <footer class="result-footer">
+          <button class="button button--ghost button--small" id="restart-button" type="button">重新测试</button>
+        </footer>
+      </section>
+    </main>
+
+    <template id="option-template">
+      <button class="option-card" type="button">
+        <span class="option-card__key"></span>
+        <span class="option-card__text"></span>
+      </button>
+    </template>
+
+    <div class="toast" id="toast" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
