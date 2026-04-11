@@ -1198,44 +1198,26 @@ function createPosterCanvas(bundle) {
   context.stroke();
   context.restore();
 
-  cursorY += 34;
-  cursorY = drawTextBlock(context, {
-    text: "你的闪光点",
-    x: contentX,
-    y: cursorY,
-    maxWidth: contentWidth,
-    font: `700 30px ${posterFonts.sans}`,
-    fillStyle: "#1f2937",
-    lineHeight: 38,
-    maxLines: 1,
-  });
-
-  cursorY += 18;
-  profile.highlights.slice(0, 3).forEach((item, index) => {
-    cursorY += index === 0 ? 0 : 14;
-    cursorY += drawPosterHighlight(context, {
-      x: contentX,
-      y: cursorY,
-      width: contentWidth,
-      text: item,
-      color: index % 2 === 0 ? primaryColor : secondaryColor,
-      index,
-    });
-  });
-
-  cursorY += 34;
+  cursorY += 64;
+  
+  // 计算寄语文字高度以动态调整背景框
+  const messageText = `“${profile.message}”`;
+  const messageFont = `500 38px ${posterFonts.serif}`;
+  const messageLineHeight = 58;
+  
+  // 寄语背景框
   drawRoundedRect(context, {
     x: contentX,
     y: cursorY,
     width: contentWidth,
-    height: 282,
+    height: 220,
     radius: 32,
     fill: "rgba(255, 255, 255, 0.74)",
     stroke: hexToRgba(primaryColor, 0.12),
   });
 
   drawTextBlock(context, {
-    text: "力量寄语",
+    text: "专属力量寄语",
     x: contentX + 34,
     y: cursorY + 28,
     maxWidth: contentWidth - 68,
@@ -1246,24 +1228,13 @@ function createPosterCanvas(bundle) {
   });
 
   drawTextBlock(context, {
-    text: `“${profile.message}”`,
+    text: messageText,
     x: contentX + 34,
-    y: cursorY + 78,
+    y: cursorY + 82,
     maxWidth: contentWidth - 68,
-    font: `500 34px ${posterFonts.serif}`,
+    font: messageFont,
     fillStyle: "#17202a",
-    lineHeight: 52,
-    maxLines: 4,
-  });
-
-  drawTextBlock(context, {
-    text: profile.growthTip,
-    x: contentX + 34,
-    y: cursorY + 190,
-    maxWidth: contentWidth - 68,
-    font: `400 24px ${posterFonts.sans}`,
-    fillStyle: "#667085",
-    lineHeight: 36,
+    lineHeight: messageLineHeight,
     maxLines: 3,
   });
 
