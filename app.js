@@ -551,7 +551,6 @@ const clearButton = document.getElementById("clear-button");
 const homeButton = document.getElementById("home-button");
 const prevButton = document.getElementById("prev-button");
 const restartButton = document.getElementById("restart-button");
-const shareButton = document.getElementById("share-button");
 const saveButton = document.getElementById("save-button");
 const progressLabel = document.getElementById("progress-label");
 const progressFill = document.getElementById("progress-fill");
@@ -1292,28 +1291,6 @@ async function handleSavePoster() {
   }
 }
 
-async function handleShareResult() {
-  if (!currentResultBundle) return;
-  if (navigator.share) {
-    setButtonLoading(shareButton, true, "请稍候...");
-    try {
-      const asset = await buildPosterAsset(currentResultBundle);
-      const file = new File([asset.blob], asset.filename, { type: "image/png" });
-      await navigator.share({
-        title: "女性力量人格图鉴",
-        text: `我的测试结果是：${currentResultBundle.profile.title}。快来测测你的专属女性力量！`,
-        files: [file],
-      });
-    } catch (e) {
-      if (e.name !== "AbortError") handleSavePoster();
-    } finally {
-      setButtonLoading(shareButton, false);
-    }
-  } else {
-    handleSavePoster();
-  }
-}
-
 startButton.addEventListener("click", () => {
   clearState();
   persistState();
@@ -1340,7 +1317,6 @@ homeButton.addEventListener("click", () => {
 
 prevButton.addEventListener("click", goPrev);
 restartButton.addEventListener("click", restartQuiz);
-shareButton.addEventListener("click", handleShareResult);
 saveButton.addEventListener("click", handleSavePoster);
 
 document.addEventListener("keydown", (event) => {
