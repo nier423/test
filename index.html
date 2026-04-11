@@ -48,7 +48,6 @@
             <button class="button button--ghost hidden" id="clear-button" type="button">清空本地记录</button>
           </div>
         </div>
-
       </section>
 
       <section class="screen hidden" id="quiz-screen">
@@ -87,8 +86,6 @@
             <h2 class="result-title" id="result-title"></h2>
             <p class="result-code" id="result-code"></p>
           </div>
-          <div class="result-actions">
-          </div>
         </header>
 
         <section class="result-hero card" id="result-hero">
@@ -112,7 +109,6 @@
             <ul class="tag-list" id="highlight-list"></ul>
           </article>
 
-
           <article class="content-card card">
             <h3>同频伙伴 &amp; 磨合提示</h3>
             <div class="companion-grid" id="companion-grid"></div>
@@ -131,7 +127,12 @@
         </section>
 
         <footer class="result-footer">
-          <button class="button button--ghost button--small" id="restart-button" type="button">重新测试</button>
+          <div class="result-footer__actions">
+            <button class="button button--secondary" id="share-button" type="button">分享结果海报</button>
+            <button class="button button--primary" id="save-button" type="button">保存到相册</button>
+            <button class="button button--ghost button--small" id="restart-button" type="button">重新测试</button>
+          </div>
+          <p class="result-footer__hint">支持分享到朋友圈、小红书等社媒；若浏览器不支持系统分享，会自动下载海报。</p>
         </footer>
       </section>
     </main>

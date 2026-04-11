@@ -551,6 +551,8 @@ const clearButton = document.getElementById("clear-button");
 const homeButton = document.getElementById("home-button");
 const prevButton = document.getElementById("prev-button");
 const restartButton = document.getElementById("restart-button");
+const shareButton = document.getElementById("share-button");
+const saveButton = document.getElementById("save-button");
 const progressLabel = document.getElementById("progress-label");
 const progressFill = document.getElementById("progress-fill");
 const questionNumber = document.getElementById("question-number");
@@ -575,6 +577,16 @@ const powerQuote = document.getElementById("power-quote");
 let state = loadState();
 let currentResultBundle = null;
 let autoAdvanceHandle = 0;
+
+const posterSize = {
+  width: 1080,
+  height: 1440,
+};
+
+const posterFonts = {
+  sans: '"Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif',
+  serif: '"STSong", "Songti SC", "Noto Serif SC", serif',
+};
 
 function createInitialState() {
   return {
@@ -636,6 +648,20 @@ function answeredCount() {
 
 function isComplete() {
   return answeredCount() === questions.length;
+}
+
+function ensureResultBundle() {
+  if (currentResultBundle) {
+    return currentResultBundle;
+  }
+
+  if (!isComplete()) {
+    showToast("完成测试后才能生成结果海报");
+    return null;
+  }
+
+  currentResultBundle = buildResultBundle();
+  return currentResultBundle;
 }
 
 function formatScore(value) {
@@ -783,6 +809,635 @@ function buildResultBundle() {
 
 function setResultTheme(primary) {
   document.documentElement.style.setProperty("--result-accent", dimensions[primary].color);
+}
+
+function setButtonLoading(button, isLoading, loadingLabel) {
+  if (!button) {
+    return;
+  }
+
+  if (!button.dataset.defaultLabel) {
+    button.dataset.defaultLabel = button.textContent;
+  }
+
+  button.disabled = isLoading;
+  button.classList.toggle("is-loading", isLoading);
+  button.textContent = isLoading ? loadingLabel : button.dataset.defaultLabel;
+}
+
+function hexToRgba(hex, alpha = 1) {
+  const normalized = hex.replace("#", "");
+  const full = normalized.length === 3
+    ? normalized
+      .split("")
+      .map((char) => `${char}${char}`)
+      .join("")
+    : normalized;
+  const value = Number.parseInt(full, 16);
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function traceRoundedRectPath(context, x, y, width, height, radius) {
+  const safeRadius = Math.min(radius, width / 2, height / 2);
+
+  context.beginPath();
+  context.moveTo(x + safeRadius, y);
+  context.lineTo(x + width - safeRadius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+  context.lineTo(x + width, y + height - safeRadius);
+  context.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+  context.lineTo(x + safeRadius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+  context.lineTo(x, y + safeRadius);
+  context.quadraticCurveTo(x, y, x + safeRadius, y);
+  context.closePath();
+}
+
+function drawRoundedRect(context, config) {
+  const {
+    x,
+    y,
+    width,
+    height,
+    radius,
+    fill,
+    stroke,
+    lineWidth = 1,
+  } = config;
+
+  context.save();
+  traceRoundedRectPath(context, x, y, width, height, radius);
+
+  if (fill) {
+    context.fillStyle = fill;
+    context.fill();
+  }
+
+  if (stroke) {
+    context.lineWidth = lineWidth;
+    context.strokeStyle = stroke;
+    context.stroke();
+  }
+
+  context.restore();
+}
+
+function wrapText(context, text, maxWidth, maxLines = Number.POSITIVE_INFINITY) {
+  const source = String(text || "");
+  const lines = [];
+  let currentLine = "";
+
+  [...source].forEach((char) => {
+    if (char === "\n") {
+      lines.push(currentLine.trimEnd());
+      currentLine = "";
+      return;
+    }
+
+    const nextLine = `${currentLine}${char}`;
+    if (currentLine && context.measureText(nextLine).width > maxWidth) {
+      lines.push(currentLine.trimEnd());
+      currentLine = char.trimStart();
+      return;
+    }
+
+    currentLine = nextLine;
+  });
+
+  if (currentLine) {
+    lines.push(currentLine.trimEnd());
+  }
+
+  if (lines.length <= maxLines) {
+    return lines;
+  }
+
+  const trimmed = lines.slice(0, maxLines);
+  let lastLine = trimmed[maxLines - 1].replace(/\s+$/u, "");
+
+  while (lastLine && context.measureText(`${lastLine}…`).width > maxWidth) {
+    lastLine = lastLine.slice(0, -1);
+  }
+
+  trimmed[maxLines - 1] = `${lastLine}…`;
+  return trimmed;
+}
+
+function drawTextBlock(context, config) {
+  const {
+    text,
+    x,
+    y,
+    maxWidth,
+    font,
+    fillStyle,
+    lineHeight,
+    maxLines = Number.POSITIVE_INFINITY,
+  } = config;
+
+  context.save();
+  context.font = font;
+  context.fillStyle = fillStyle;
+  context.textBaseline = "top";
+  context.textAlign = "left";
+
+  const lines = wrapText(context, text, maxWidth, maxLines);
+  lines.forEach((line, index) => {
+    context.fillText(line, x, y + index * lineHeight);
+  });
+
+  context.restore();
+  return y + lines.length * lineHeight;
+}
+
+function drawPosterPill(context, config) {
+  const {
+    x,
+    y,
+    label,
+    fill,
+    color,
+  } = config;
+
+  context.save();
+  context.font = `600 26px ${posterFonts.sans}`;
+  context.textBaseline = "middle";
+
+  const paddingX = 24;
+  const height = 58;
+  const width = context.measureText(label).width + paddingX * 2;
+
+  drawRoundedRect(context, {
+    x,
+    y,
+    width,
+    height,
+    radius: height / 2,
+    fill,
+  });
+
+  context.fillStyle = color;
+  context.fillText(label, x + paddingX, y + height / 2);
+  context.restore();
+
+  return width;
+}
+
+function drawPosterHighlight(context, config) {
+  const {
+    x,
+    y,
+    width,
+    text,
+    color,
+    index,
+  } = config;
+
+  const height = 118;
+
+  drawRoundedRect(context, {
+    x,
+    y,
+    width,
+    height,
+    radius: 26,
+    fill: hexToRgba(color, 0.08),
+    stroke: hexToRgba(color, 0.16),
+  });
+
+  context.save();
+  context.fillStyle = color;
+  context.font = `700 22px ${posterFonts.sans}`;
+  context.textBaseline = "middle";
+  context.fillText(`0${index + 1}`, x + 26, y + 28);
+  context.restore();
+
+  drawTextBlock(context, {
+    text,
+    x: x + 26,
+    y: y + 44,
+    maxWidth: width - 52,
+    font: `500 28px ${posterFonts.sans}`,
+    fillStyle: "#1f2937",
+    lineHeight: 38,
+    maxLines: 2,
+  });
+
+  return height;
+}
+
+function buildShareCopy(bundle) {
+  const { profile } = bundle;
+  return [
+    `我刚测出的女性力量类型是「${profile.title}」${profile.code ? `（${profile.code}）` : ""}`,
+    profile.headline,
+    profile.tagline,
+    "#女性力量人格图鉴",
+  ].join("\n");
+}
+
+function buildPosterFilename(bundle) {
+  return `女性力量测试结果-${bundle.profile.code}.png`;
+}
+
+function createPosterCanvas(bundle) {
+  const canvas = document.createElement("canvas");
+  canvas.width = posterSize.width;
+  canvas.height = posterSize.height;
+
+  const context = canvas.getContext("2d");
+  const width = canvas.width;
+  const height = canvas.height;
+  const { profile, primary, secondary } = bundle;
+  const primaryColor = dimensions[primary].color;
+  const secondaryColor = dimensions[secondary].color;
+  const cardX = 72;
+  const cardY = 72;
+  const cardWidth = width - 144;
+  const cardHeight = height - 144;
+  const contentX = cardX + 68;
+  const contentWidth = cardWidth - 136;
+
+  context.fillStyle = "#f7f1ea";
+  context.fillRect(0, 0, width, height);
+
+  const backgroundGradient = context.createLinearGradient(0, 0, width, height);
+  backgroundGradient.addColorStop(0, hexToRgba(primaryColor, 0.16));
+  backgroundGradient.addColorStop(1, hexToRgba(secondaryColor, 0.18));
+  context.fillStyle = backgroundGradient;
+  context.fillRect(0, 0, width, height);
+
+  context.save();
+  context.fillStyle = hexToRgba(primaryColor, 0.2);
+  context.beginPath();
+  context.arc(180, 190, 210, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = hexToRgba(secondaryColor, 0.18);
+  context.beginPath();
+  context.arc(930, 260, 240, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = "rgba(255, 255, 255, 0.4)";
+  context.beginPath();
+  context.arc(860, 1130, 180, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+
+  context.save();
+  context.shadowColor = "rgba(15, 23, 42, 0.14)";
+  context.shadowBlur = 40;
+  context.shadowOffsetY = 20;
+  drawRoundedRect(context, {
+    x: cardX,
+    y: cardY,
+    width: cardWidth,
+    height: cardHeight,
+    radius: 48,
+    fill: "rgba(255, 252, 247, 0.96)",
+  });
+  context.restore();
+
+  drawRoundedRect(context, {
+    x: cardX,
+    y: cardY,
+    width: cardWidth,
+    height: cardHeight,
+    radius: 48,
+    stroke: "rgba(255, 255, 255, 0.75)",
+    lineWidth: 2,
+  });
+
+  let cursorY = cardY + 72;
+
+  cursorY = drawTextBlock(context, {
+    text: "女性力量人格图鉴",
+    x: contentX,
+    y: cursorY,
+    maxWidth: contentWidth,
+    font: `700 24px ${posterFonts.sans}`,
+    fillStyle: hexToRgba(primaryColor, 0.9),
+    lineHeight: 30,
+    maxLines: 1,
+  });
+
+  cursorY += 18;
+  cursorY = drawTextBlock(context, {
+    text: profile.title,
+    x: contentX,
+    y: cursorY,
+    maxWidth: contentWidth,
+    font: `600 72px ${posterFonts.serif}`,
+    fillStyle: "#17202a",
+    lineHeight: 86,
+    maxLines: 2,
+  });
+
+  cursorY += 12;
+  cursorY = drawTextBlock(context, {
+    text: `${profile.code} · ${profile.archetype}`,
+    x: contentX,
+    y: cursorY,
+    maxWidth: contentWidth,
+    font: `600 28px ${posterFonts.sans}`,
+    fillStyle: "#667085",
+    lineHeight: 38,
+    maxLines: 1,
+  });
+
+  cursorY += 18;
+  cursorY = drawTextBlock(context, {
+    text: profile.headline,
+    x: contentX,
+    y: cursorY,
+    maxWidth: contentWidth,
+    font: `600 48px ${posterFonts.serif}`,
+    fillStyle: "#1f2937",
+    lineHeight: 62,
+    maxLines: 3,
+  });
+
+  cursorY += 18;
+  cursorY = drawTextBlock(context, {
+    text: profile.tagline,
+    x: contentX,
+    y: cursorY,
+    maxWidth: contentWidth,
+    font: `400 30px ${posterFonts.sans}`,
+    fillStyle: "#526072",
+    lineHeight: 46,
+    maxLines: 3,
+  });
+
+  cursorY += 30;
+  const firstPillWidth = drawPosterPill(context, {
+    x: contentX,
+    y: cursorY,
+    label: `主力 · ${dimensions[primary].label}`,
+    fill: hexToRgba(primaryColor, 0.14),
+    color: primaryColor,
+  });
+
+  drawPosterPill(context, {
+    x: contentX + firstPillWidth + 16,
+    y: cursorY,
+    label: `辅助 · ${dimensions[secondary].label}`,
+    fill: hexToRgba(secondaryColor, 0.14),
+    color: secondaryColor,
+  });
+
+  cursorY += 96;
+  context.save();
+  context.strokeStyle = "rgba(148, 163, 184, 0.24)";
+  context.lineWidth = 2;
+  context.beginPath();
+  context.moveTo(contentX, cursorY);
+  context.lineTo(contentX + contentWidth, cursorY);
+  context.stroke();
+  context.restore();
+
+  cursorY += 34;
+  cursorY = drawTextBlock(context, {
+    text: "你的闪光点",
+    x: contentX,
+    y: cursorY,
+    maxWidth: contentWidth,
+    font: `700 30px ${posterFonts.sans}`,
+    fillStyle: "#1f2937",
+    lineHeight: 38,
+    maxLines: 1,
+  });
+
+  cursorY += 18;
+  profile.highlights.slice(0, 3).forEach((item, index) => {
+    cursorY += index === 0 ? 0 : 14;
+    cursorY += drawPosterHighlight(context, {
+      x: contentX,
+      y: cursorY,
+      width: contentWidth,
+      text: item,
+      color: index % 2 === 0 ? primaryColor : secondaryColor,
+      index,
+    });
+  });
+
+  cursorY += 34;
+  drawRoundedRect(context, {
+    x: contentX,
+    y: cursorY,
+    width: contentWidth,
+    height: 282,
+    radius: 32,
+    fill: "rgba(255, 255, 255, 0.74)",
+    stroke: hexToRgba(primaryColor, 0.12),
+  });
+
+  drawTextBlock(context, {
+    text: "力量寄语",
+    x: contentX + 34,
+    y: cursorY + 28,
+    maxWidth: contentWidth - 68,
+    font: `700 28px ${posterFonts.sans}`,
+    fillStyle: primaryColor,
+    lineHeight: 36,
+    maxLines: 1,
+  });
+
+  drawTextBlock(context, {
+    text: `“${profile.message}”`,
+    x: contentX + 34,
+    y: cursorY + 78,
+    maxWidth: contentWidth - 68,
+    font: `500 34px ${posterFonts.serif}`,
+    fillStyle: "#17202a",
+    lineHeight: 52,
+    maxLines: 4,
+  });
+
+  drawTextBlock(context, {
+    text: profile.growthTip,
+    x: contentX + 34,
+    y: cursorY + 190,
+    maxWidth: contentWidth - 68,
+    font: `400 24px ${posterFonts.sans}`,
+    fillStyle: "#667085",
+    lineHeight: 36,
+    maxLines: 3,
+  });
+
+  drawTextBlock(context, {
+    text: "#女性力量人格图鉴  #测试结果",
+    x: contentX,
+    y: cardY + cardHeight - 74,
+    maxWidth: contentWidth,
+    font: `600 24px ${posterFonts.sans}`,
+    fillStyle: "#526072",
+    lineHeight: 32,
+    maxLines: 1,
+  });
+
+  return canvas;
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+        return;
+      }
+
+      reject(new Error("Failed to export poster blob"));
+    }, "image/png");
+  });
+}
+
+async function buildPosterAsset(bundle = ensureResultBundle()) {
+  if (!bundle) {
+    return null;
+  }
+
+  const canvas = createPosterCanvas(bundle);
+  const blob = await canvasToBlob(canvas);
+
+  return {
+    blob,
+    copy: buildShareCopy(bundle),
+    filename: buildPosterFilename(bundle),
+  };
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const supportsDownload = "download" in HTMLAnchorElement.prototype;
+
+  if (supportsDownload) {
+    link.href = url;
+    link.download = filename;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 1500);
+    return true;
+  }
+
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  window.setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 60_000);
+
+  if (!opened) {
+    window.location.href = url;
+  }
+
+  return false;
+}
+
+async function copyShareCopy(text) {
+  if (!window.isSecureContext || !navigator.clipboard?.writeText) {
+    return false;
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function fallbackShare(asset) {
+  const copied = await copyShareCopy(asset.copy);
+  const downloaded = downloadBlob(asset.blob, asset.filename);
+
+  if (downloaded) {
+    showToast(copied ? "已下载海报并复制文案，可直接发到朋友圈或小红书" : "已下载海报，可直接发到朋友圈或小红书");
+    return;
+  }
+
+  showToast(copied ? "已打开海报并复制文案，请长按图片保存后分享" : "已打开海报，请长按图片保存后分享");
+}
+
+async function handleShareResult() {
+  const bundle = ensureResultBundle();
+  if (!bundle) {
+    return;
+  }
+
+  setButtonLoading(shareButton, true, "生成分享中...");
+  let asset = null;
+
+  try {
+    asset = await buildPosterAsset(bundle);
+    const file = typeof File === "undefined"
+      ? null
+      : new File([asset.blob], asset.filename, { type: "image/png", lastModified: Date.now() });
+    const canShareFile = Boolean(
+      navigator.share
+        && file
+        && (typeof navigator.canShare !== "function" || navigator.canShare({ files: [file] }))
+    );
+
+    if (canShareFile) {
+      await navigator.share({
+        title: "女性力量人格图鉴",
+        text: asset.copy,
+        files: [file],
+      });
+      showToast("分享面板已打开");
+      return;
+    }
+
+    await fallbackShare(asset);
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      showToast("已取消分享");
+      return;
+    }
+
+    console.error(error);
+
+    if (asset) {
+      await fallbackShare(asset);
+      return;
+    }
+
+    showToast("生成分享海报失败，请稍后再试");
+  } finally {
+    setButtonLoading(shareButton, false, "");
+  }
+}
+
+async function handleSavePoster() {
+  const bundle = ensureResultBundle();
+  if (!bundle) {
+    return;
+  }
+
+  setButtonLoading(saveButton, true, "生成图片中...");
+
+  try {
+    const asset = await buildPosterAsset(bundle);
+    const downloaded = downloadBlob(asset.blob, asset.filename);
+
+    if (downloaded) {
+      showToast("海报已开始下载，请在相册或下载目录查看");
+      return;
+    }
+
+    showToast("海报已打开，请长按图片保存到相册");
+  } catch (error) {
+    console.error(error);
+    showToast("保存海报失败，请稍后再试");
+  } finally {
+    setButtonLoading(saveButton, false, "");
+  }
 }
 
 function appendParagraph(target, text) {
@@ -1003,6 +1658,8 @@ homeButton.addEventListener("click", () => {
 
 prevButton.addEventListener("click", goPrev);
 restartButton.addEventListener("click", restartQuiz);
+shareButton.addEventListener("click", handleShareResult);
+saveButton.addEventListener("click", handleSavePoster);
 
 document.addEventListener("keydown", (event) => {
   const quizVisible = !screens.quiz.classList.contains("hidden");
